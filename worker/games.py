@@ -1,3 +1,4 @@
+import base64
 import copy
 import ctypes
 import hashlib
@@ -17,7 +18,6 @@ import sys
 import tempfile
 import threading
 import time
-from base64 import b64decode
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -34,6 +34,13 @@ IS_MACOS = "darwin" in platform.system().lower()
 LOGFILE = "api.log"
 
 LOG_LOCK = threading.Lock()
+
+
+def text_hash(file):
+    # text mode to have newline translation!
+    return base64.b64encode(
+        hashlib.sha384(file.read_text().encode("utf8")).digest()
+    ).decode("utf8")
 
 
 class WorkerException(Exception):
@@ -550,7 +557,9 @@ def download_from_github_api(
     )
     print("Downloading {}".format(item_url))
     git_url = requests_get(item_url, timeout=HTTP_TIMEOUT).json()["git_url"]
-    return b64decode(requests_get(git_url, timeout=HTTP_TIMEOUT).json()["content"])
+    return base64.b64decode(
+        requests_get(git_url, timeout=HTTP_TIMEOUT).json()["content"]
+    )
 
 
 def download_from_github(
@@ -1454,13 +1463,61 @@ def run_games(
 
     os.chdir(testing_dir)
 
-    # Download the opening book if missing in the directory.
-    if not (testing_dir / book).exists() or (testing_dir / book).stat().st_size == 0:
-        zipball = book + ".zip"
-        blob = download_from_github(zipball)
-        unzip(blob, testing_dir)
-    else:
-        update_atime(testing_dir / book)
+    downloaded_book = book_sri_matches = False
+    while not (downloaded_book or book_sri_matches):
+        # Download the opening book if missing in the directory.
+        if (
+            not (testing_dir / book).exists()
+            or (testing_dir / book).stat().st_size == 0
+        ):
+            zipball = book + ".zip"
+            blob = download_from_github(zipball)
+            unzip(blob, testing_dir)
+            downloaded_book = True
+        else:
+            update_atime(testing_dir / book)
+            print(f"Re-using local book {testing_dir / book}.")
+
+        books_json_name = "books.json"
+        try:
+            books_json = json.loads(download_from_github(books_json_name))
+            book_sri = books_json[book]["sri"]
+        except Exception as e:
+            print(
+                f"Failed to receive/read {books_json_name}:\n",
+                e,
+                sep="",
+                file=sys.stderr,
+            )
+            break
+
+        sri = text_hash(testing_dir / book)
+        if book_sri == sri:
+            print(f"Book sri for {book} matches.")
+            book_sri_matches = True
+        else:
+            print(
+                f"Book sri mismatch: {book_sri} != {sri}.",
+                file=sys.stderr,
+            )
+            if not downloaded_book:
+                try:
+                    (testing_dir / book).unlink()
+                    print(f"Deleted local book {testing_dir / book}.")
+                except Exception as e:
+                    print(
+                        f"Failed to remove local book {testing_dir / book}:\n",
+                        e,
+                        sep="",
+                        file=sys.stderr,
+                    )
+                    break
+
+    if not book_sri_matches:
+        print(
+            f"Failed to match sri for book {book}",
+            file=sys.stderr,
+        )
 
     # Clean up the old networks (keeping the num_bkps most recent)
     num_bkps = 10
