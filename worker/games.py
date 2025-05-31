@@ -1478,6 +1478,8 @@ def run_games(
             update_atime(testing_dir / book)
             print(f"Re-using local book {testing_dir / book}.")
 
+        # TODO: obtain books_sri via run["args"]["book_sri"]
+        #       needs server-side code changes
         books_json_name = "books.json"
         try:
             books_json = json.loads(download_from_github(books_json_name))
