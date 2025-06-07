@@ -211,8 +211,8 @@ class _concurrency:
         if ("MAX" not in x and ret >= self.MAX) or ret > self.MAX:
             print(
                 f"\nYou cannot have concurrency {ret} but at most:\n"
-                "  a) {self.MAX} with '--concurrency MAX';\n"
-                "  b) {self.MAX - 1} otherwise.\n"
+                f"  a) {self.MAX} with '--concurrency MAX';\n"
+                f"  b) {self.MAX - 1} otherwise.\n"
                 "Please use option a) only if your computer is very lightly loaded.\n"
             )
             raise ValueError(x)
