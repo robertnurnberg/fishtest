@@ -73,7 +73,7 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "66cac47f06dc1a09d3d1865cdbf560a7814f82ea"
 
-WORKER_VERSION = 292
+WORKER_VERSION = 293
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -645,6 +645,7 @@ def setup_parameters(worker_dir):
         ("parameters", "fleet", "False", _bool, None),
         ("parameters", "global_cache", "", str, None),
         ("parameters", "compiler", default_compiler, compiler_names, None),
+        ("parameters", "arch", "", str, None),
         ("private", "hw_seed", str(random.randint(0, 0xFFFFFFFF)), int, None),
     ]
 
@@ -750,6 +751,14 @@ def setup_parameters(worker_dir):
         type=str,
         choices=compiler_names,
         help="choose the compiler used by the worker",
+    )
+    parser.add_argument(
+        "-a",
+        "--arch",
+        dest="arch",
+        default=config.get("parameters", "arch"),
+        type=str,
+        help="(For experts only!) choose the arch used by the compiler",
     )
     parser.add_argument(
         "-w",
@@ -865,6 +874,7 @@ def setup_parameters(worker_dir):
     config.set("parameters", "fleet", str(options.fleet))
     config.set("parameters", "global_cache", str(options.global_cache))
     config.set("parameters", "compiler", options.compiler_)
+    config.set("parameters", "arch", options.arch)
 
     with open(config_file, "w") as f:
         config.write(f)
@@ -1536,6 +1546,7 @@ def worker():
             patchlevel,
         ),
         "compiler": compiler,
+        "arch": options.arch,
         "unique_key": get_uuid(options),
         "modified": not unmodified,
         "ARCH": "?",

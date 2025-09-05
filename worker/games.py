@@ -813,6 +813,7 @@ def setup_engine(
     repo_url,
     concurrency,
     compiler,
+    arch,
     version,
     global_cache,
 ):
@@ -857,7 +858,10 @@ def setup_engine(
             establish_validated_net(remote, testing_dir, net, global_cache)
             shutil.copyfile(testing_dir / net, net)
 
-        arch = find_arch(compiler)
+        if arch != "":
+            print("Attempt user-specified architecture ", arch)
+        else:
+            arch = find_arch(compiler)
 
         if arch == "native":
             engine_path = engine_path_native
@@ -1418,6 +1422,7 @@ def run_games(
     testing_dir = worker_dir / "testing"
     concurrency = worker_info["concurrency"]
     compiler = worker_info["compiler"]
+    arch = worker_info.get("arch")
     version = worker_info["gcc_version"]
 
     new_engine = setup_engine(
@@ -1427,6 +1432,7 @@ def run_games(
         repo_url,
         concurrency,
         compiler,
+        arch,
         version,
         global_cache,
     )
@@ -1437,6 +1443,7 @@ def run_games(
         repo_url,
         concurrency,
         compiler,
+        arch,
         version,
         global_cache,
     )
