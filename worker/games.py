@@ -810,6 +810,7 @@ def setup_engine(
     testing_dir,
     remote,
     sha,
+    signature,
     repo_url,
     concurrency,
     compiler,
@@ -823,8 +824,20 @@ def setup_engine(
     engine_path_native = (testing_dir / engine_name).with_suffix(EXE_SUFFIX)
     for path in (engine_path_native, engine_path):
         if path.exists():
-            update_atime(path)
-            return path
+            try:
+                verify_signature(path, signature)
+            except Exception as e:
+                print(f"Cached engine gave exception:\n{e}", file=sys.stderr)
+                try:
+                    path.unlink()
+                    print(f"Deleted cached engine {path}.")
+                except Exception as e:
+                    raise WorkerException(
+                        f"Failed to remove cached engine {path}.", e=e
+                    )
+            else:
+                update_atime(path)
+                return path
 
     """Download and build sources in a temporary directory then move exe as engine_path"""
     worker_dir = testing_dir.parent
@@ -1424,6 +1437,7 @@ def run_games(
         testing_dir,
         remote,
         run["args"]["resolved_new"],
+        run["args"]["new_signature"],
         repo_url,
         concurrency,
         compiler,
@@ -1434,6 +1448,7 @@ def run_games(
         testing_dir,
         remote,
         run["args"]["resolved_base"],
+        run["args"]["base_signature"],
         repo_url,
         concurrency,
         compiler,
