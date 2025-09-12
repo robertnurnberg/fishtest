@@ -837,7 +837,7 @@ def setup_engine(
                     )
             else:
                 update_atime(path)
-                return path
+                return path, True
 
     """Download and build sources in a temporary directory then move exe as engine_path"""
     worker_dir = testing_dir.parent
@@ -939,7 +939,7 @@ def setup_engine(
         os.chdir(worker_dir)
         shutil.rmtree(tmp_dir)
 
-    return engine_path
+    return engine_path, False
 
 
 def kill_process(p):
@@ -1433,7 +1433,7 @@ def run_games(
     compiler = worker_info["compiler"]
     version = worker_info["gcc_version"]
 
-    new_engine = setup_engine(
+    new_engine, new_engine_verified = setup_engine(
         testing_dir,
         remote,
         run["args"]["resolved_new"],
@@ -1444,7 +1444,7 @@ def run_games(
         version,
         global_cache,
     )
-    base_engine = setup_engine(
+    base_engine, base_engine_verified = setup_engine(
         testing_dir,
         remote,
         run["args"]["resolved_base"],
@@ -1526,7 +1526,8 @@ def run_games(
     run_errors = []
     try:
         cpu_features = get_cpu_features(base_engine)
-        verify_signature(base_engine, run["args"]["base_signature"])
+        if not base_engine_verified:
+            verify_signature(base_engine, run["args"]["base_signature"])
         base_nps = get_bench_nps(base_engine, games_concurrency, threads, base_hash)
     except RunException as e:
         run_errors.append(str(e))
@@ -1539,7 +1540,8 @@ def run_games(
     ):
         try:
             _ = get_cpu_features(new_engine)
-            verify_signature(new_engine, run["args"]["new_signature"])
+            if not new_engine_verified:
+               verify_signature(new_engine, run["args"]["new_signature"])
             _ = get_bench_nps(new_engine, games_concurrency, threads, new_hash)
         except RunException as e:
             run_errors.append(str(e))
