@@ -1026,6 +1026,8 @@ def enqueue_output(stream, queue):
 def parse_fastchess_output(
     p,
     current_state,
+    worker_info,
+    password,
     remote,
     result,
     spsa_tuning,
@@ -1088,14 +1090,14 @@ def parse_fastchess_output(
         re.compile(r"Warning; Too long mating PV"),
         # Warning; Mating PV does not end with checkmate
         re.compile(r"Warning; Mating PV does not end with checkmate"),
-        #
-        # TODO: The following warnings should ideally just be flagged for
-        # now, but not lead to a RunException:
-        #
+    )
+    patterns_fastchess_warning = (
+        # For now we just warn about 50mr, can be moved up to error later
         # Warning; PV continues after fifty-move rule - move ...
-        # re.compile(r"Warning; PV continues after fifty-move"),
+        re.compile(r"Warning; PV continues after fifty-move"),
+        # SF18 may trigger this warning, so only move up once SF19 is released
         # Warning; Bestmove does not match beginning of last PV - move ...
-        # re.compile(r"Warning; Bestmove does not match beginning of last PV"),
+        re.compile(r"Warning; Bestmove does not match beginning of last PV"),
     )
 
     q = Queue()
@@ -1147,6 +1149,16 @@ def parse_fastchess_output(
         if any(pattern.search(line) for pattern in patterns_fastchess_error):
             message = f"fastchess says: '{line}'"
             raise RunException(message)
+
+        # Check line for fastchess warnings.
+        if any(pattern.search(line) for pattern in patterns_fastchess_warning):
+            message = f"fastchess says: '{line}'"
+            post_to_worker_log(
+                worker_info,
+                password,
+                remote,
+                message,
+            )
 
         # Parse line like this:
         # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
@@ -1266,6 +1278,8 @@ def parse_fastchess_output(
 def launch_fastchess(
     cmd,
     current_state,
+    worker_info,
+    password,
     remote,
     result,
     spsa_tuning,
@@ -1348,6 +1362,8 @@ def launch_fastchess(
                 task_alive = parse_fastchess_output(
                     p,
                     current_state,
+                    worker_info,
+                    password,
                     remote,
                     result,
                     spsa_tuning,
@@ -1741,6 +1757,8 @@ def run_games(
         task_alive = launch_fastchess(
             cmd,
             current_state,
+            worker_info,
+            password,
             remote,
             result,
             spsa_tuning,
