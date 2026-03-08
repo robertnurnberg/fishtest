@@ -1110,6 +1110,7 @@ def parse_fastchess_output(
     print(f"TC limit {tc_limit} End time: {end_time}")
 
     num_games_updated = 0
+    posted_fastchess_warnings = set()
     while datetime.now(timezone.utc) < end_time:
         if current_state["task_id"] is None:
             # This task is no longer necessary.
@@ -1151,14 +1152,18 @@ def parse_fastchess_output(
             raise RunException(message)
 
         # Check line for fastchess warnings.
-        if any(pattern.search(line) for pattern in patterns_fastchess_warning):
-            message = f"fastchess says: '{line}'"
-            post_to_worker_log(
-                worker_info,
-                password,
-                remote,
-                message,
-            )
+        for i, pattern in enumerate(patterns_fastchess_warning):
+            if pattern.search(line):
+                if i not in posted_fastchess_warnings:
+                    posted_fastchess_warnings.add(i)
+                    message = f"fastchess says: '{line}'"
+                    post_to_worker_log(
+                        worker_info,
+                        password,
+                        remote,
+                        message,
+                    )
+                break
 
         # Parse line like this:
         # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
