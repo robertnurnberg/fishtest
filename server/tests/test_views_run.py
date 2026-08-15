@@ -433,11 +433,11 @@ class TemplateConstraintContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         self.assertIn(
-            '{{ "checked" if args.get("auto_purge", True) else "" }}',
+            '{{ "checked" if args.get("auto_purge", False) else "" }}',
             template_source,
         )
-        self.assertEqual(template_source.count('"auto_purge": true'), 6)
-        self.assertEqual(template_source.count('"auto_purge": false'), 2)
+        self.assertEqual(template_source.count('"auto_purge": true'), 0)
+        self.assertEqual(template_source.count('"auto_purge": false'), 8)
         self.assertIn(
             'if (!isRun && typeof auto_purge === "boolean") {',
             template_source,
